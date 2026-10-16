@@ -1302,7 +1302,7 @@ void LovyanGfx::show_info()
         tftPinInfo(F("TFT_D7"), cfg.pin_d7);
         tftPinInfo(F("TFT_D8"), cfg.pin_d8);
         tftPinInfo(F("TFT_D9"), cfg.pin_d9);
-        tftPinInfo(F("TFT_D01"), cfg.pin_d10);
+        tftPinInfo(F("TFT_D10"), cfg.pin_d10);
         tftPinInfo(F("TFT_D11"), cfg.pin_d11);
         tftPinInfo(F("TFT_D12"), cfg.pin_d12);
         tftPinInfo(F("TFT_D13"), cfg.pin_d13);
@@ -1459,7 +1459,7 @@ bool LovyanGfx::is_driver_pin(uint8_t pin)
         } else if(bus_type == lgfx::v1::bus_parallel16) {
             auto bus = (lgfx::v1::Bus_Parallel16*)panel->getBus();
             auto cfg = bus->config(); // Get the structure for bus configuration.
-            if(cfg.pin_wr || pin == cfg.pin_rd || pin == cfg.pin_rs || pin == cfg.pin_d0 || pin == cfg.pin_d1 ||
+            if(pin == cfg.pin_wr || pin == cfg.pin_rd || pin == cfg.pin_rs || pin == cfg.pin_d0 || pin == cfg.pin_d1 ||
                pin == cfg.pin_d2 || pin == cfg.pin_d3 || pin == cfg.pin_d4 || pin == cfg.pin_d5 || pin == cfg.pin_d6 ||
                pin == cfg.pin_d7 || pin == cfg.pin_d8 || pin == cfg.pin_d9 || pin == cfg.pin_d10 ||
                pin == cfg.pin_d11 || pin == cfg.pin_d12 || pin == cfg.pin_d13 || pin == cfg.pin_d14 ||
