@@ -527,6 +527,7 @@ static inline bool gpio_set_analog_value(hasp_gpio_config_t* gpio)
     return true;                   // sent
 
 #elif defined(ARDUINO_ARCH_ESP32)
+    if(gpio->channel == 0) return false; // no LEDC channel was assigned, channel 0 belongs to the backlight
 
     if(gpio->max == 255)
         val = SCALE_8BIT_TO_10BIT(gpio->val);
