@@ -38,6 +38,9 @@ ButtonConfig switchConfig; // Clicks only
 #ifndef HASP_BUZZER_FREQUENCY
 #define HASP_BUZZER_FREQUENCY 2700 // Hz, resonant frequency of common passive buzzers (e.g. MLT-8530)
 #endif
+#ifndef HASP_BUZZER_BEEP_MS
+#define HASP_BUZZER_BEEP_MS 200 // ms, a switched-on buzzer turns itself off after this time (0 = stays on)
+#endif
 
 // An array of button pins, led pins, and the led states. Cannot be const
 // because ledState is mutable.
@@ -392,6 +395,13 @@ IRAM_ATTR void gpioLoop(void)
     // Should be called every 4-5ms or faster, for the default debouncing time of ~20ms.
     for(uint8_t i = 0; i < HASP_NUM_GPIO_CONFIG; i++) {
         if(gpioConfig[i].btn) gpioConfig[i].btn->check();
+
+#if HASP_BUZZER_BEEP_MS > 0
+        // a beep ends by itself: switch the buzzer off and report the new state
+        if(gpioConfig[i].type == hasp_gpio_type_t::BUZZER && gpioConfig[i].power &&
+           (int32_t)(millis() - gpioConfig[i].timeout) >= 0)
+            gpio_set_pin_state(gpioConfig[i].pin, false, 0);
+#endif
     }
 }
 
@@ -565,7 +575,8 @@ static inline bool gpio_set_buzzer_value(hasp_gpio_config_t* gpio)
     uint16_t duty = gpio->power ? 512 : 0; // 50% duty cycle = tone, 0 = silent
     if(gpio->inverted) duty = 1023 - duty;
     ledcWrite(gpio->channel, duty); // 10 bits
-    return true;                    // sent
+    if(gpio->power) gpio->timeout = millis() + HASP_BUZZER_BEEP_MS; // end of the beep, see gpioLoop()
+    return true;                                                    // sent
 
 #else
     return false;                  // not implemented

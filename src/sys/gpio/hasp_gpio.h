@@ -22,6 +22,7 @@ struct hasp_gpio_config_t
     uint8_t power : 1;
     uint16_t val;
     uint16_t max;
+    uint32_t timeout; // BUZZER: millis() at which the tone switches itself off
 #ifdef ARDUINO
     AceButton* btn;
 #endif

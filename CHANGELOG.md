@@ -42,7 +42,7 @@
 ### Devices
 - Add Elecrow ESP32-Terminal 3.5" SPI and RGB
 - Elecrow ESP32-Terminal 3.5" RGB: datasheet-safe 24 MHz display bus clock, landscape default, larger draw buffer and documented on-board pins
-- Add `Buzzer` GPIO output type: fixed-tone PWM switched on and off like a relay (e.g. the ESP32-Terminal buzzer on GPIO 20)
+- Add `Buzzer` GPIO output type: fixed-tone PWM switched on like a relay that turns itself off after 200 ms (`HASP_BUZZER_BEEP_MS`), e.g. the ESP32-Terminal buzzer on GPIO 20
 - Add GS-T3E Smart Panel
 - Add Lilygo Ttgo Lily Pi ESP32
 - Add Makerfabs ESP32-S3 SPI
