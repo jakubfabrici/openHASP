@@ -55,6 +55,7 @@
 ## Bug fixes
 - Fix for first touch not working properly
 - Fix GPIO configuration on 16-bit parallel displays (ESP32-S2/S3): every GPIO was reported as a TFT pin
+- Fix LED/PWM outputs that got no free LEDC channel (ESP32): they wrote to channel 0 and dimmed the backlight
 - Add button GPIOs to input discovery message
 
 ### Architecture
