@@ -35,6 +35,10 @@ ButtonConfig switchConfig; // Clicks only
 #define SCALE_8BIT_TO_12BIT(x) x << 4 | x >> 4
 #define SCALE_8BIT_TO_10BIT(x) x << 2 | x >> 6
 
+#ifndef HASP_BUZZER_FREQUENCY
+#define HASP_BUZZER_FREQUENCY 2700 // Hz, resonant frequency of common passive buzzers (e.g. MLT-8530)
+#endif
+
 // An array of button pins, led pins, and the led states. Cannot be const
 // because ledState is mutable.
 hasp_gpio_config_t gpioConfig[HASP_NUM_GPIO_CONFIG] = {
@@ -306,6 +310,24 @@ static void gpio_setup_pin(uint8_t index)
 #endif
             break;
 
+        case hasp_gpio_type_t::BUZZER:
+            pinMode(gpio->pin, OUTPUT);
+            gpio->power = gpio->inverted; // gpio is off, state is set to reflect the true output state of the gpio
+            gpio->max   = 1;              // on-off
+            gpio->val   = gpio->power;
+#if defined(ARDUINO_ARCH_ESP32)
+            if(pwm_channel < LEDC_CHANNEL_MAX) {
+                // passive buzzer: fixed tone, duty cycle switches it on or off
+                ledcSetup(pwm_channel, HASP_BUZZER_FREQUENCY, 10);
+                ledcAttachPin(gpio->pin, pwm_channel);
+                gpio->channel = pwm_channel++;
+                ledcWrite(gpio->channel, gpio->inverted ? 1023 : 0); // silent
+            } else {
+                LOG_ERROR(TAG_GPIO, F("Too many PWM channels defined"));
+            }
+#endif
+            break;
+
         case hasp_gpio_type_t::HASP_DAC:
 #if defined(CONFIG_IDF_TARGET_ESP32)
             // gpio_num_t pin;
@@ -439,6 +461,7 @@ void gpio_output_state(hasp_gpio_config_t* gpio)
     switch(gpio->type) {
         case LIGHT_RELAY:
         case POWER_RELAY:
+        case BUZZER:
             dispatch_state_eventid(topic, (hasp_event_t)gpio->power);
             break;
         case LED:
@@ -529,6 +552,19 @@ static inline bool gpio_set_analog_value(hasp_gpio_config_t* gpio)
 #endif
 }
 
+static inline bool gpio_set_buzzer_value(hasp_gpio_config_t* gpio)
+{
+#if defined(ARDUINO_ARCH_ESP32)
+    uint16_t duty = gpio->power ? 512 : 0; // 50% duty cycle = tone, 0 = silent
+    if(gpio->inverted) duty = 1023 - duty;
+    ledcWrite(gpio->channel, duty); // 10 bits
+    return true;                    // sent
+
+#else
+    return false;                  // not implemented
+#endif
+}
+
 // val is assumed to be 12 bits
 static inline bool gpio_set_digital_value(hasp_gpio_config_t* gpio)
 {
@@ -613,6 +649,9 @@ static bool gpio_set_output_value(hasp_gpio_config_t* gpio, bool power, uint16_t
         case hasp_gpio_type_t::LIGHT_RELAY:
             return gpio_set_digital_value(gpio);
 
+        case hasp_gpio_type_t::BUZZER:
+            return gpio_set_buzzer_value(gpio);
+
         case hasp_gpio_type_t::LED... hasp_gpio_type_t::LED_W:
         case hasp_gpio_type_t::PWM:
             return gpio_set_analog_value(gpio);
@@ -645,6 +684,7 @@ static void gpio_set_normalized_value(hasp_gpio_config_t* gpio, hasp_update_valu
         switch(gpio->type) {
             case hasp_gpio_type_t::POWER_RELAY:
             case hasp_gpio_type_t::LIGHT_RELAY:
+            case hasp_gpio_type_t::BUZZER:
                 val = val > value.min ? HIGH : LOW;
                 break;
 
@@ -854,6 +894,7 @@ void gpio_discovery(JsonObject& input, JsonArray& relay, JsonArray& light, JsonA
                 break;
 
             case hasp_gpio_type_t::POWER_RELAY:
+            case hasp_gpio_type_t::BUZZER:
                 relay.add(gpioConfig[i].pin);
                 break;
                 

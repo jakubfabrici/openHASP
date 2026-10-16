@@ -1561,6 +1561,9 @@ void webHandleGpioConfig(AsyncWebServerRequest* request)
                         case hasp_gpio_type_t::HASP_DAC:
                             httpMessage += F(D_GPIO_DAC);
                             break;
+                        case hasp_gpio_type_t::BUZZER:
+                            httpMessage += F("Buzzer");
+                            break;
 
 #if defined(LANBONL8)
                             // case hasp_gpio_type_t::SERIAL_DIMMER:
@@ -1691,6 +1694,9 @@ void webHandleGpioOutput(AsyncWebServerRequest* request)
     if(digitalPinHasPWM(request->arg((size_t)0).toInt())) {
         selected = (conf.type == hasp_gpio_type_t::PWM);
         httpMessage += getOption(hasp_gpio_type_t::PWM, F(D_GPIO_PWM), selected);
+
+        selected = (conf.type == hasp_gpio_type_t::BUZZER);
+        httpMessage += getOption(hasp_gpio_type_t::BUZZER, F("Buzzer"), selected);
     }
     httpMessage += F("</select></p>");
 

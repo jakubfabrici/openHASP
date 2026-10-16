@@ -41,6 +41,8 @@
 
 ### Devices
 - Add Elecrow ESP32-Terminal 3.5" SPI and RGB
+- Elecrow ESP32-Terminal 3.5" RGB: datasheet-safe 24 MHz display bus clock, landscape default, larger draw buffer and documented on-board pins
+- Add `Buzzer` GPIO output type: fixed-tone PWM switched on and off like a relay (e.g. the ESP32-Terminal buzzer on GPIO 20)
 - Add GS-T3E Smart Panel
 - Add Lilygo Ttgo Lily Pi ESP32
 - Add Makerfabs ESP32-S3 SPI
@@ -52,6 +54,7 @@
 
 ## Bug fixes
 - Fix for first touch not working properly
+- Fix GPIO configuration on 16-bit parallel displays (ESP32-S2/S3): every GPIO was reported as a TFT pin
 - Add button GPIOs to input discovery message
 
 ### Architecture
