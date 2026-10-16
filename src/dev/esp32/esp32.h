@@ -60,6 +60,12 @@ class Esp32Device : public BaseDevice {
 
     bool is_system_pin(uint8_t pin) override;
 
+#ifdef BAT_ADC
+    void init() override;
+    void loop_5s() override;
+    uint16_t get_battery_mv();
+#endif
+
   private:
     std::string _hardware_id;
     std::string _chip_model;
@@ -72,6 +78,11 @@ class Esp32Device : public BaseDevice {
     bool _backlight_pending;
     bool _backlight_fading;
     bool _backlight_fade;
+#ifdef BAT_ADC
+    uint16_t _battery_mv;
+
+    void read_battery();
+#endif
 
     void update_backlight();
     static bool cb_backlight(const ledc_cb_param_t *param, void *user_arg);

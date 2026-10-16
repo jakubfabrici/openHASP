@@ -1474,6 +1474,12 @@ void dispatch_statusupdate(const char*, const char*, uint8_t source)
                    haspDevice.get_free_heap(), haspDevice.get_heap_fragmentation(), haspDevice.get_core_version());
         strcat(data, buffer);
 
+#ifdef BAT_ADC
+        uint16_t battery_mv = haspDevice.get_battery_mv();
+        snprintf_P(buffer, sizeof(buffer), PSTR("\"batteryVoltage\":%d.%03d,"), battery_mv / 1000, battery_mv % 1000);
+        strcat(data, buffer);
+#endif
+
         snprintf_P(buffer, sizeof(buffer), PSTR("\"canUpdate\":\"false\",\"page\":%u,\"numPages\":%u,"),
                    haspPages.get(), haspPages.count());
         strcat(data, buffer);

@@ -287,6 +287,30 @@ void mqtt_ha_register_activepage()
     mqtt_ha_send_json(buffer, doc);
 }
 
+#ifdef BAT_ADC
+void mqtt_ha_register_battery()
+{
+    StaticJsonDocument<800> doc;
+    char item[16];
+    snprintf_P(item, sizeof(item), PSTR("battery"));
+
+    // start from static keys and values that do not change
+    deserializeJson(doc, F("{\"stat_t\":\"~" MQTT_TOPIC_STATE "/statusupdate\","
+                           "\"val_tpl\":\"{{ value_json.batteryVoltage }}\","
+                           "\"dev_cla\":\"voltage\","
+                           "\"unit_of_meas\":\"V\","
+                           "\"stat_cla\":\"measurement\","
+                           "\"avty_t\":\"~LWT\"}"));
+    mqtt_ha_add_device_ids(doc);
+    mqtt_ha_add_unique_id(doc, item);
+
+    char buffer[128];
+    snprintf_P(buffer, sizeof(buffer), PSTR("%s/sensor/%s/%s/config"), discovery_prefix, haspDevice.get_hostname(),
+               item);
+    mqtt_ha_send_json(buffer, doc);
+}
+#endif
+
 void mqtt_ha_register_auto_discovery()
 {
     LOG_TRACE(TAG_MQTT_PUB, F(D_MQTT_HA_AUTO_DISCOVERY));
@@ -297,6 +321,9 @@ void mqtt_ha_register_auto_discovery()
     mqtt_ha_register_moodlight();
     mqtt_ha_register_idle();
     mqtt_ha_register_connectivity();
+#ifdef BAT_ADC
+    mqtt_ha_register_battery();
+#endif
 }
 #endif
 
