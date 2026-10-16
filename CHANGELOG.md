@@ -43,6 +43,7 @@
 - Add Elecrow ESP32-Terminal 3.5" SPI and RGB
 - Elecrow ESP32-Terminal 3.5" RGB: datasheet-safe 24 MHz display bus clock, landscape default, larger draw buffer and documented on-board pins
 - Add `Buzzer` GPIO output type: fixed-tone PWM switched on and off like a relay (e.g. the ESP32-Terminal buzzer on GPIO 20)
+- Add `BAT_ADC` build option: battery voltage from an ADC2 divider in the `statusupdate` message and as a Home Assistant voltage sensor (ESP32-Terminal RGB: GPIO 17)
 - Add GS-T3E Smart Panel
 - Add Lilygo Ttgo Lily Pi ESP32
 - Add Makerfabs ESP32-S3 SPI

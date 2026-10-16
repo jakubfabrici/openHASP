@@ -21,6 +21,21 @@
 
 #define BACKLIGHT_CHANNEL 0
 
+#ifdef BAT_ADC
+#include "soc/adc_channel.h"
+
+#ifndef BAT_ADC_DIVIDER
+#define BAT_ADC_DIVIDER 2 // V_battery / V_pin of the resistor divider
+#endif
+#define BAT_ADC_SAMPLES 16
+
+// BAT_ADC must be an ADC2 GPIO; soc/adc_channel.h maps its number to the channel at compile time
+#define BAT_ADC_CHANNEL_(gpio) ADC2_GPIO##gpio##_CHANNEL
+#define BAT_ADC_CHANNEL(gpio) BAT_ADC_CHANNEL_(gpio)
+
+static esp_adc_cal_characteristics_t bat_adc_chars;
+#endif
+
 #if defined(CONFIG_IDF_TARGET_ESP32)
 uint8_t temprature_sens_read();
 #endif
@@ -109,6 +124,10 @@ Esp32Device::Esp32Device()
     _backlight_power  = 1;
     _backlight_level  = 255;
     _backlight_pin    = 255; // not TFT_BCKL because it is unknown at this stage
+#ifdef BAT_ADC
+    has_battery = true;
+    _battery_mv = 0;
+#endif
 
     /* fill unique identifier with wifi mac */
     byte mac[6];
@@ -356,6 +375,9 @@ uint16_t Esp32Device::get_cpu_frequency()
 
 bool Esp32Device::is_system_pin(uint8_t pin)
 {
+#ifdef BAT_ADC
+    if(pin == BAT_ADC) return true; // battery voltage divider
+#endif
 // Also see esp32.cpp / hasp_gpio.cpp
 #if defined(CONFIG_IDF_TARGET_ESP32S3) && !defined(LANBONL9)
     if((pin >= 22) && (pin <= 25)) return true; // unavailable
@@ -446,6 +468,44 @@ long Esp32Device::get_uptime()
 {
     return esp_timer_get_time() / 1000000U;
 }
+
+#ifdef BAT_ADC
+void Esp32Device::init()
+{
+    // 11 dB attenuation covers the full input range of the pin (about 3.1 V on the ESP32-S3)
+    adc2_config_channel_atten(BAT_ADC_CHANNEL(BAT_ADC), ADC_ATTEN_DB_11);
+    esp_adc_cal_characterize(ADC_UNIT_2, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &bat_adc_chars);
+    read_battery(); // Wi-Fi is not running yet, so ADC2 is free for the first reading
+}
+
+void Esp32Device::loop_5s()
+{
+    read_battery();
+}
+
+// ADC2 is shared with Wi-Fi: a sample fails when the radio holds the ADC, so failed samples
+// are skipped and the previous reading is kept when none of the samples succeeds.
+void Esp32Device::read_battery()
+{
+    uint32_t sum  = 0;
+    uint8_t count = 0;
+
+    for(uint8_t i = 0; i < BAT_ADC_SAMPLES; i++) {
+        int raw;
+        if(adc2_get_raw(BAT_ADC_CHANNEL(BAT_ADC), ADC_WIDTH_BIT_12, &raw) != ESP_OK) continue;
+        sum += raw;
+        count++;
+    }
+    if(count == 0) return;
+
+    _battery_mv = esp_adc_cal_raw_to_voltage(sum / count, &bat_adc_chars) * BAT_ADC_DIVIDER;
+}
+
+uint16_t Esp32Device::get_battery_mv()
+{
+    return _battery_mv;
+}
+#endif // BAT_ADC
 
 } // namespace dev
 
