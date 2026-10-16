@@ -312,15 +312,20 @@ static void gpio_setup_pin(uint8_t index)
 
         case hasp_gpio_type_t::BUZZER:
             pinMode(gpio->pin, OUTPUT);
-            gpio->power = gpio->inverted; // gpio is off, state is set to reflect the true output state of the gpio
-            gpio->max   = 1;              // on-off
-            gpio->val   = gpio->power;
+            gpio->power = 0; // the setup below always drives the silent level, whatever the polarity
+            gpio->max   = 1; // on-off
+            gpio->val   = 0;
 #if defined(ARDUINO_ARCH_ESP32)
-            if(pwm_channel < LEDC_CHANNEL_MAX) {
-                // passive buzzer: fixed tone, duty cycle switches it on or off
+            // passive buzzer: fixed tone, duty cycle switches it on or off.
+            // LEDC channels 2n and 2n+1 share timer n in the Arduino core and channel 0 is the backlight:
+            // put the tone on an even channel (its own timer) and skip the odd partner so that no later
+            // 20 kHz LED/PWM output retunes it
+            if(pwm_channel & 1) pwm_channel++;
+            if(pwm_channel + 1 < LEDC_CHANNEL_MAX) {
                 ledcSetup(pwm_channel, HASP_BUZZER_FREQUENCY, 10);
                 ledcAttachPin(gpio->pin, pwm_channel);
-                gpio->channel = pwm_channel++;
+                gpio->channel = pwm_channel;
+                pwm_channel += 2;
                 ledcWrite(gpio->channel, gpio->inverted ? 1023 : 0); // silent
             } else {
                 LOG_ERROR(TAG_GPIO, F("Too many PWM channels defined"));
@@ -555,6 +560,8 @@ static inline bool gpio_set_analog_value(hasp_gpio_config_t* gpio)
 static inline bool gpio_set_buzzer_value(hasp_gpio_config_t* gpio)
 {
 #if defined(ARDUINO_ARCH_ESP32)
+    if(gpio->channel == 0) return false;   // no LEDC channel was assigned, channel 0 belongs to the backlight
+
     uint16_t duty = gpio->power ? 512 : 0; // 50% duty cycle = tone, 0 = silent
     if(gpio->inverted) duty = 1023 - duty;
     ledcWrite(gpio->channel, duty); // 10 bits
