@@ -12,6 +12,7 @@
 */
 
 #include "hasplib.h"
+#include "sys/net/hasp_ping.h"
 #include "hasp_oobe.h"
 #include "sys/net/hasp_network.h"
 #include "sys/net/hasp_time.h"
@@ -183,6 +184,10 @@ IRAM_ATTR void loop()
 
 #if HASP_USE_WIFI > 0 || HASP_USE_ETHERNET > 0
     networkLoop();
+#endif
+
+#if defined(ARDUINO_ARCH_ESP32)
+    pingLoop();
 #endif
 
 #if HASP_USE_GPIO > 0

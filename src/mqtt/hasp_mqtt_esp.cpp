@@ -30,6 +30,10 @@
 #define MQTT_DEFAULT_BROADCAST_TOPIC MQTT_PREFIX "/" MQTT_TOPIC_BROADCAST "/%topic%"
 #define MQTT_DEFAULT_HASS_TOPIC "homeassistant/status"
 
+#ifndef HASP_HA_OFFLINE_REBOOT_MIN
+#define HASP_HA_OFFLINE_REBOOT_MIN 15 // reboot after this many minutes without the home automation system (0 = never)
+#endif
+
 QueueHandle_t queue;
 typedef struct
 {
@@ -70,6 +74,40 @@ static esp_mqtt_client_config_t mqtt_cfg;
 bool last_mqtt_state            = false;
 bool current_mqtt_state         = false;
 uint16_t mqtt_reconnect_counter = 0;
+
+/* Home automation system: MQTT connected and no "offline" received on the hass status topic */
+static int8_t hass_status        = -1;   // -1 = nothing received yet, 0 = offline, 1 = online
+static bool last_ha_state        = true; // scripts run on the first change after boot
+static uint32_t ha_offline_since = 0;    // millis() of the start of the current outage, 0 = none
+
+
+static void ha_run_scripts()
+{
+    if(!mqttEnabled) { // no broker configured: nothing to watch, never arm the reboot
+        ha_offline_since = 0;
+        return;
+    }
+
+    bool ha_state = current_mqtt_state && hass_status != 0;
+
+    if(ha_state != last_ha_state) {
+        LOG_INFO(TAG_MQTT, F("Home Automation System: %s"),
+                 ha_state ? PSTR(D_SERVICE_CONNECTED) : PSTR(D_SERVICE_DISCONNECTED));
+        dispatch_run_script(NULL, ha_state ? "L:/ha_on.cmd" : "L:/ha_off.cmd", TAG_HASP);
+        last_ha_state = ha_state;
+    }
+
+    if(ha_state) {
+        ha_offline_since = 0;
+    } else if(ha_offline_since == 0) {
+        ha_offline_since = millis() | 1; // never 0
+    } else if(HASP_HA_OFFLINE_REBOOT_MIN > 0 &&
+              millis() - ha_offline_since >= HASP_HA_OFFLINE_REBOOT_MIN * 60000UL) {
+        LOG_WARNING(TAG_MQTT, F("Home Automation System unreachable for %d minutes, rebooting"),
+                    HASP_HA_OFFLINE_REBOOT_MIN);
+        dispatch_reboot(true);
+    }
+}
 
 static inline void mqtt_run_scripts()
 {
@@ -113,6 +151,7 @@ void mqtt_connected()
     if(!current_mqtt_state) {
         mqtt_reconnect_counter = 0;
         current_mqtt_state     = true; // now we are connected
+        hass_status            = -1;   // the retained status message, if any, follows the subscription
         LOG_VERBOSE(TAG_MQTT, F("%s"), current_mqtt_state ? PSTR(D_SERVICE_CONNECTED) : PSTR(D_SERVICE_DISCONNECTED));
     }
     // mqtt_run_scripts(); // must happen in LVGL loop
@@ -241,6 +280,7 @@ static void mqtt_message_cb(const char* topic, byte* payload, unsigned int lengt
 
     if(topic == strstr(topic, mqttNodeCommandTopic.c_str())) { // startsWith mqttNodeCommandTopic
         topic += strlen(mqttNodeCommandTopic.c_str());         // shorten Node topic
+        hass_status = 1; // whoever sends us commands is alive, clears a stale "offline" on the status topic
 
     } else if(topic == strstr(topic, mqttGroupCommandTopic.c_str())) { // startsWith mqttGroupCommandTopic
         topic += strlen(mqttGroupCommandTopic.c_str());                // shorten Group topic
@@ -262,6 +302,10 @@ static void mqtt_message_cb(const char* topic, byte* payload, unsigned int lengt
         String state = String((const char*)payload);
         state.toLowerCase();
         LOG_VERBOSE(TAG_MQTT, "Home Automation System: %s", state);
+        if(state == F("online"))
+            hass_status = 1;
+        else if(state == F("offline"))
+            hass_status = 0;
         return;
 
     } else {
@@ -512,6 +556,7 @@ IRAM_ATTR void mqttLoop(void)
 void mqttEverySecond()
 {
     mqtt_run_scripts();
+    ha_run_scripts();
 }
 
 void mqttEvery5Seconds(bool networkIsConnected)
