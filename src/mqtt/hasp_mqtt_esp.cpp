@@ -80,6 +80,7 @@ static int8_t hass_status        = -1;   // -1 = nothing received yet, 0 = offli
 static bool last_ha_state        = true; // scripts run on the first change after boot
 static uint32_t ha_offline_since = 0;    // millis() of the start of the current outage, 0 = none
 
+
 static void ha_run_scripts()
 {
     bool ha_state = current_mqtt_state && hass_status != 0;
@@ -145,6 +146,7 @@ void mqtt_connected()
     if(!current_mqtt_state) {
         mqtt_reconnect_counter = 0;
         current_mqtt_state     = true; // now we are connected
+        hass_status            = -1;   // the retained status message, if any, follows the subscription
         LOG_VERBOSE(TAG_MQTT, F("%s"), current_mqtt_state ? PSTR(D_SERVICE_CONNECTED) : PSTR(D_SERVICE_DISCONNECTED));
     }
     // mqtt_run_scripts(); // must happen in LVGL loop
@@ -273,6 +275,7 @@ static void mqtt_message_cb(const char* topic, byte* payload, unsigned int lengt
 
     if(topic == strstr(topic, mqttNodeCommandTopic.c_str())) { // startsWith mqttNodeCommandTopic
         topic += strlen(mqttNodeCommandTopic.c_str());         // shorten Node topic
+        hass_status = 1; // whoever sends us commands is alive, clears a stale "offline" on the status topic
 
     } else if(topic == strstr(topic, mqttGroupCommandTopic.c_str())) { // startsWith mqttGroupCommandTopic
         topic += strlen(mqttGroupCommandTopic.c_str());                // shorten Group topic
