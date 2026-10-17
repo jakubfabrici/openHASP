@@ -83,6 +83,11 @@ static uint32_t ha_offline_since = 0;    // millis() of the start of the current
 
 static void ha_run_scripts()
 {
+    if(!mqttEnabled) { // no broker configured: nothing to watch, never arm the reboot
+        ha_offline_since = 0;
+        return;
+    }
+
     bool ha_state = current_mqtt_state && hass_status != 0;
 
     if(ha_state != last_ha_state) {
