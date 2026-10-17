@@ -6,6 +6,7 @@
 
 ### Commands
 - Removed deprecated `dim`, `brightness` and `light` commands, use `backlight` instead
+- Add `ping <ip> [p#b#]` (ESP32): 3 ICMP echo requests, result on the `ping` state topic and optionally in an object's text
 
 ### Objects
 <!-- ? Support for State and Part properties -->
@@ -38,6 +39,7 @@
 - Add configuration for NTP servers and timezone
 - Add support system scripts executed when the idle level is changed
 - Add support for WireGuard (thanks @perexg)
+- Run `L:/ha_on.cmd` / `L:/ha_off.cmd` when the home automation system becomes reachable or unreachable (MQTT connection and the `homeassistant/status` topic) and reboot after `HASP_HA_OFFLINE_REBOOT_MIN` minutes without it (15, 0 = never)
 
 ### Devices
 - Add Elecrow ESP32-Terminal 3.5" SPI and RGB

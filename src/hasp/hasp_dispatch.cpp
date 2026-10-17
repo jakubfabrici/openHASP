@@ -45,6 +45,7 @@ static std::mutex deferred_mutex;
 #include "mqtt/hasp_mqtt.h"
 #include "sys/net/hasp_network.h" // for network_get_status()
 #include "sys/net/hasp_time.h"
+#include "sys/net/hasp_ping.h"
 #endif
 #endif
 
@@ -1698,6 +1699,9 @@ void dispatchSetup()
     dispatch_add_command(PSTR("restart"), dispatch_reboot);
     dispatch_add_command(PSTR("screenshot"), dispatch_screenshot);
     dispatch_add_command(PSTR("discovery"), dispatch_queue_discovery);
+#if defined(ARDUINO_ARCH_ESP32)
+    dispatch_add_command(PSTR("ping"), dispatch_ping);
+#endif
     dispatch_add_command(PSTR("factoryreset"), dispatch_factory_reset);
 
     /* obsolete commands */
